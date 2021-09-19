@@ -8,7 +8,10 @@ export default class Home extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image("forsale", "src/assets/forsale.jpg");
+    this.load.baseURL = "https://natekeep.jumpingcrab.com/forsale-media/";
+    this.load.setCORS("anonymous");
+    this.load.crossOrigin = "anonymous";
+    this.load.image("forsale", "forsale.jpg");
   }
   create() {
     let self = this;
@@ -17,7 +20,7 @@ export default class Home extends Phaser.Scene {
     this.playerName;
     this.playerNumber = 0;
 
-    self.socket = io("http://localhost:3000");
+    self.socket = io("http://natekeep.jumpingcrab.com:3000");
     self.socket.on("connect", function () {
       console.log("Connected to server!");
     });

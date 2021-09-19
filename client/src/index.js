@@ -9,6 +9,7 @@ const config = {
   height: 780,
   scene: [Home, Game],
   dom: { createContainer: true },
+  loader: { crossOrigin: true },
 };
 
 const game = new Phaser.Game(config);

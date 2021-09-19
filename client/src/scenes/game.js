@@ -18,23 +18,26 @@ export default class Game extends Phaser.Scene {
     this.playerNumber = data.playerNumber;
   }
   preload() {
+    this.load.baseURL = "https://natekeep.jumpingcrab.com/forsale-media/";
+    this.load.setCORS("anonymous");
+    this.load.crossOrigin = "anonymous";
     for (let i = 0; i < 30; i++) {
-      let title = "src/assets/cards_";
+      let title = "cards_";
       let sprite = this.load.image(
         "house" + (i + 1).toString(),
         title + (i + 1).toString() + ".jpg"
       );
     }
     for (let i = 31; i < 61; i++) {
-      let title = "src/assets/cards_";
+      let title = "cards_";
       let sprite = this.load.image(
         "money" + (i - 30).toString(),
         title + i.toString() + ".jpg"
       );
     }
-    let coin = this.load.image("coin1", "src/assets/coin1.jpg");
-    let houseBack = this.load.image("houseBack", "src/assets/houseback.PNG");
-    let moneyBack = this.load.image("moneyBack", "src/assets/moneyback.PNG");
+    let coin = this.load.image("coin1", "coin1.jpg");
+    let houseBack = this.load.image("houseBack", "houseback.PNG");
+    let moneyBack = this.load.image("moneyBack", "moneyback.PNG");
   }
   create() {
     let self = this;
