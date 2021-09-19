@@ -20,7 +20,7 @@ export default class Home extends Phaser.Scene {
     this.playerName;
     this.playerNumber = 0;
 
-    self.socket = io("http://natekeep.jumpingcrab.com:3000");
+    self.socket = io("https://natekeep.jumpingcrab.com", {path: '/forsale-server'});
     self.socket.on("connect", function () {
       console.log("Connected to server!");
     });

@@ -5,6 +5,7 @@ const io = require("socket.io")(http, {
     origin: "*",
     methods: ["GET", "POST"],
   },
+  path: '/forsale-server',
 });
 let players = {}; //Stores key value pairs of rooms and players
 let gameEnd = {};
@@ -234,7 +235,6 @@ io.on("connection", function (socket) {
     } catch {}
   });
 });
-
 http.listen(3000, function () {
   console.log("Server started!");
 });
