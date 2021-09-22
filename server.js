@@ -5,7 +5,7 @@ const io = require("socket.io")(http, {
     origin: "*",
     methods: ["GET", "POST"],
   },
-  path: '/forsale-server',
+  path: "/forsale-server",
 });
 let players = {}; //Stores key value pairs of rooms and players
 let gameEnd = {};
@@ -14,20 +14,6 @@ io.on("connection", function (socket) {
   self = this;
   this.roomId;
   console.log("A user connected: " + socket.id);
-
-  // players.push({
-  //   playerId: socket.id,
-  //   isIn: true,
-  //   playedHouse: false,
-  //   ready: false,
-  // });
-  // console.log("number of players: " + players.length);
-  // console.log(players);
-
-  // if (players.length === 1) {
-  //   io.emit("isPlayerA");
-  // }
-  // io.emit("addPlayers", players.length);
 
   socket.on("createRoom", function (roomId, name) {
     console.log([...io.sockets.adapter.rooms.keys()]);
@@ -172,12 +158,36 @@ io.on("connection", function (socket) {
     }
   });
 
-  socket.on("moneyPhase", function () {
-    console.log("Entering the money phase");
-    io.to(self.roomId).emit("moneyPhase");
-    io.to(self.roomId).emit("nextMoneyTurn");
-  });
-  socket.on("readyForNextTurn", function (playerNumber) {
+  socket.on(
+    "readyForNextHouseTurn",
+    function (playerNumber, winningPlayer, moneyPhase = false) {
+      players[self.roomId][playerNumber - 1].ready = true;
+      let allReady = true;
+      players[self.roomId].forEach((player) => {
+        if (!player.ready) {
+          allReady = false;
+        }
+      });
+
+      if (!moneyPhase) {
+        //Continuing with the house phase
+        if (allReady) {
+          players[self.roomId].map((player) => (player.ready = false));
+          io.to(self.roomId).emit("dealCards", winningPlayer);
+        }
+      } else {
+        //Entering the money phase
+        if (allReady) {
+          players[self.roomId].map((player) => (player.ready = false));
+          console.log("Entering the money phase");
+          io.to(self.roomId).emit("moneyPhase");
+          io.to(self.roomId).emit("nextMoneyTurn");
+        }
+      }
+    }
+  );
+
+  socket.on("readyForNextMoneyTurn", function (playerNumber) {
     players[self.roomId][playerNumber - 1].ready = true;
     let allReady = true;
     players[self.roomId].forEach((player) => {
@@ -233,6 +243,21 @@ io.on("connection", function (socket) {
         (player) => player.playerId !== socket.id
       );
     } catch {}
+    //Update the room with the correct players if in a room
+    if (self.roomId) {
+      let roomPlayers = [];
+      players[self.roomId].forEach((player) =>
+        roomPlayers.push(player["playerName"])
+      );
+      if (players[self.roomId].length !== 0) {
+        //Update the room for the other players if there are still players in the room
+        io.to(self.roomId).emit("playerJoined", roomPlayers, self.roomId);
+      } else {
+        //Remove the room key from players if no players are in the room anymore
+        delete players[self.roomId];
+      }
+      console.log(players);
+    }
   });
 });
 http.listen(3000, function () {

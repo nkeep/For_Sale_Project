@@ -26,8 +26,8 @@ export default class Dealer {
       for (let i = 0; i < scene.activePlayers; i++) {
         // let sprite = scene.load.image("housecards", 3);
         scene.houseCards[i].render(
-          640 - 250 + this.houseCardsInPlay * 150,
-          375,
+          360 + this.houseCardsInPlay * 125,
+          325,
           scale
         );
         this.houseCardsInPlay++;
@@ -35,10 +35,7 @@ export default class Dealer {
     };
     this.dealMoneyCards = () => {
       for (let i = 0; i < scene.activePlayers; i++) {
-        scene.moneyCards[i].render(
-          640 - 250 + this.moneyCardsInPlay * 150,
-          375
-        );
+        scene.moneyCards[i].render(360 + this.moneyCardsInPlay * 125, 325);
         this.moneyCardsInPlay++;
       }
     };

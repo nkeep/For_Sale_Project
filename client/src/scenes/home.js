@@ -20,8 +20,11 @@ export default class Home extends Phaser.Scene {
     this.playerName;
     this.playerNumber = 0;
 
-    self.socket = io("https://natekeep.jumpingcrab.com", {path: '/forsale-server'});
+    // self.socket = io("https://natekeep.jumpingcrab.com", {path: '/forsale-server'});
+    self.socket = io("localhost:3000", { path: "/forsale-server" });
     self.socket.on("connect", function () {
+      self.isPlayerA = false;
+      self.playerNumber = 0;
       console.log("Connected to server!");
     });
 
@@ -95,6 +98,12 @@ export default class Home extends Phaser.Scene {
         self.backButton.setVisible(false);
         self.joinElements.setVisible(false);
         self.createElements.setVisible(false);
+        self.roomIdText.setVisible(false);
+        if (self.players.getChildren()[0].visible) {
+          self.players.setVisible(false);
+          self.socket.disconnect();
+          self.socket.connect();
+        }
       });
     this.backText = this.add
       .text(self.backBox.getCenter().x, self.backBox.getCenter().y, "Back")
@@ -277,7 +286,33 @@ export default class Home extends Phaser.Scene {
       .setFontFamily("Trebuchet MS")
       .setStroke("#000000", 6)
       .setOrigin(0.5)
-      .setVisible(false);
+      .setVisible(false)
+      .setInteractive()
+      .on("pointerover", function () {
+        self.roomIdText.setColor("#ff69b4");
+      })
+      .on("pointerout", function () {
+        self.roomIdText.setColor("#ffffff");
+      })
+      .on("pointerdown", function () {
+        navigator.clipboard.writeText(self.roomIdText.text).then(function () {
+          let clipboardNotif = self.add
+            .text(1100, 650, ["Copied to clipboard!"])
+            .setColor("#ffffff")
+            .setFontSize(30)
+            .setFontFamily("Trebuchet MS")
+            .setStroke("#000000", 6)
+            .setOrigin(0.5);
+          self.time.addEvent({
+            delay: 2000,
+            callback: function () {
+              clipboardNotif.setVisible(false).destroy();
+            },
+            callbackScope: this,
+            repeat: 0,
+          });
+        });
+      });
 
     self.socket.on("playerJoined", function (roomPlayers, roomId) {
       if (self.playerNumber === 0) {
@@ -288,6 +323,7 @@ export default class Home extends Phaser.Scene {
       if (!self.roomIdText.visible) {
         self.roomIdText.setText(roomId).setVisible(true);
       }
+      self.players.setVisible(true);
       self.players
         .getChildren()
         .forEach((child, index) => child.setText(roomPlayers[index]));

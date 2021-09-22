@@ -35,28 +35,34 @@ export default class Game extends Phaser.Scene {
         title + i.toString() + ".jpg"
       );
     }
-    let coin = this.load.image("coin1", "coin1.jpg");
+    let coin = this.load.image("coin", "coin.jpg");
     let houseBack = this.load.image("houseBack", "houseback.PNG");
     let moneyBack = this.load.image("moneyBack", "moneyback.PNG");
+    let tablebackground = this.load.image(
+      "tablebackground",
+      "table-background.png"
+    );
   }
   create() {
     let self = this;
+
+    this.background = this.add.image(640, 390, "tablebackground");
 
     this.opponentCards = [];
 
     this.dealer = new Dealer(this);
     this.player1 = new Player(this);
-    this.player1.setValues(1, 426, 540);
+    this.player1.setValues(1, 426, 590, 426, 490);
     this.player2 = new Player(this);
-    this.player2.setValues(2, 80, 360);
+    this.player2.setValues(2, 100, 310, 180, 310);
     this.player3 = new Player(this);
-    this.player3.setValues(3, 426, 80);
+    this.player3.setValues(3, 426, 50, 426, 150);
     this.player4 = new Player(this);
-    this.player4.setValues(4, 852, 80);
+    this.player4.setValues(4, 852, 50, 852, 150);
     this.player5 = new Player(this);
-    this.player5.setValues(5, 1200, 360);
+    this.player5.setValues(5, 1180, 310, 1100, 310);
     this.player6 = new Player(this);
-    this.player6.setValues(6, 852, 540);
+    this.player6.setValues(6, 852, 590, 852, 490);
 
     this.playerList = [
       this.player1,
@@ -75,15 +81,23 @@ export default class Game extends Phaser.Scene {
     this.activePlayers = self.playerNames.length;
     this.playerTurn = 0;
     this.currentBid = 0;
+    this.moneyText;
     this.winText;
+    this.winningPlayerIndex;
+    this.isMoneyPhase = false;
+    this.timer = this.add
+      .text(1100, 700, [""])
+      .setFontFamily("Trebuchet MS")
+      .setFontSize(30)
+      .setColor("#FFFFFF")
+      .setStroke("#000000", 2)
+      .setVisible(false);
+
+    this.timerEvent;
     console.log(this.playerList);
 
     this.houseCards = [];
     this.moneyCards = [];
-
-    console.log(this.moneyCards);
-    console.log(this.houseCards);
-    console.log(this.isPlayerA);
 
     this.coinBalanceText = self.add
       .text(50, 720, [""])
@@ -155,6 +169,9 @@ export default class Game extends Phaser.Scene {
       ) {
         self.bidHud.setVisible(false);
         self.socket.emit("raise", self.playerNumber, self.betNumberValue);
+        self.timerEvent.remove();
+        self.timerEvent = null;
+        self.timer.setVisible(false);
       }
     });
     self.passButton = self.add
@@ -168,6 +185,9 @@ export default class Game extends Phaser.Scene {
     self.passButton.on("pointerdown", function () {
       self.bidHud.setVisible(false);
       self.socket.emit("pass", self.playerNumber, self.currentBid);
+      self.timerEvent.remove();
+      self.timerEvent = null;
+      self.timer.setVisible(false);
     });
     self.passButton.on("pointerout", function () {
       self.passButton.setColor("#ffffff");
@@ -205,6 +225,9 @@ export default class Game extends Phaser.Scene {
         self.playButton.setVisible(false);
         self.selectedCard.destroy();
         self.selectedCard = null;
+        self.timerEvent.remove();
+        self.timerEvent = null;
+        self.timer.setVisible(false);
       }
     });
     self.playButton = self.add.group();
@@ -217,7 +240,7 @@ export default class Game extends Phaser.Scene {
     if (self.isPlayerA) {
       console.log("this is player A");
       self.dealText = self.add
-        .text(150, 350, ["DEAL CARDS"])
+        .text(1100, 700, ["DEAL CARDS"])
         .setFontSize(18)
         .setFontFamily("Trebuchet MS")
         .setColor("#00ffff")
@@ -227,34 +250,8 @@ export default class Game extends Phaser.Scene {
         if (self.activePlayers >= 3) {
           this.setVisible(false);
           //Generate the decks
-          for (let i = 0; i < 30; i++) {
-            let card = new HouseCard(self);
-            card.setValues(i + 1, "house" + (i + 1).toString());
-            self.houseCards.push(card);
-          }
-          self.houseCards.sort(() => Math.random() - 0.5);
+          generateDecks();
 
-          let card = new MoneyCard(self);
-          card.setValues(0, "money1");
-          self.moneyCards.push(card);
-          let card0 = new MoneyCard(self);
-          card0.setValues(0, "money2");
-          self.moneyCards.push(card0);
-
-          for (let i = 2; i < 30; i++) {
-            let card = new MoneyCard(self);
-            card.setValues(1 + Math.floor(i / 2), "money" + (i + 1).toString());
-            self.moneyCards.push(card);
-          }
-          self.moneyCards.sort(() => Math.random() - 0.5);
-          //Remove cards based on player count
-          if (self.activePlayers === 3) {
-            self.houseCards.splice(0, 6);
-            self.moneyCards.splice(0, 6);
-          } else if (self.activePlayers === 4) {
-            self.houseCards.splice(0, 2);
-            self.moneyCards.splice(0, 2);
-          }
           console.log(self.houseCards);
           self.socket.emit("gameStart", self.houseCards, self.moneyCards);
           self.socket.emit("dealCards", 1);
@@ -293,21 +290,30 @@ export default class Game extends Phaser.Scene {
       self.playerList[winningPlayer - 1].setActive(1); //Set the winning player to green
       if (self.playerNumber === winningPlayer) {
         self.bidHud.setVisible(true);
+        startTimer(15);
       }
       self.dealer.dealCards(0.15);
     });
 
     this.socket.on("startGame", function (houseCards, moneyCards) {
-      for (let i = self.activePlayers; i < 6; i++) {
+      let numPlayers = self.playerList.length;
+      for (let i = self.activePlayers; i < numPlayers; i++) {
         //Removes players not in game
         self.playerList.pop();
       }
+      //Update players' coin balance based on number of players
+      if (self.playerList.length > 4) {
+        self.playerList.map((player) => (player.coinBalance = 14));
+      }
+      console.log(self.playerList);
       //Set coin balance
       self.coinBalanceText.setText(
         self.playerList[self.playerNumber - 1].coinBalance
       );
       if (self.playerNumber !== 1) {
         //Sync the cards generated by player1 to all other players
+        self.houseCards = [];
+        self.moneyCards = [];
         houseCards.forEach((card) => {
           let newCard = new HouseCard(self);
           newCard.setValues(card.value, card.sprite);
@@ -331,16 +337,10 @@ export default class Game extends Phaser.Scene {
           self.playerList[previousPlayer - 1].setBidNumber(bidNumber);
         }
         self.playerList[nextPlayer - 1].setActive(1);
-        if (self.playerTurn === self.playerNumber) {
-          //It is this client's turn
-          self.bidHud.setVisible(true);
-          self.betNumberValue = bidNumber + 1;
-          self.betNumber.setText(self.betNumberValue);
-        }
         if (state === 2) {
           //Set their bid number to blank since they are out
-          self.playerList[previousPlayer - 1].setBidNumber("");
           self.playerList[previousPlayer - 1].updateCoinBalance(false);
+          self.playerList[previousPlayer - 1].setBidNumber("");
           //Add the lowest card in the pool to the previous player's deck
           let lowest_value = 31;
           let lowest_index = -1;
@@ -350,12 +350,28 @@ export default class Game extends Phaser.Scene {
               lowest_index = i;
             }
           }
-          self.playerList[previousPlayer - 1].houseDeck.push(
-            self.houseCards[lowest_index]
-          );
-          self.houseCards[lowest_index].card.destroy();
-          self.houseCards.splice(lowest_index, 1); //Remove the card from the cards that are out
-          self.dealer.houseCardsInPlay--;
+          let tween = self.tweens.add({
+            targets: self.houseCards[lowest_index].card,
+            duration: 500,
+            x: self.playerList[previousPlayer - 1].x,
+            y: self.playerList[previousPlayer - 1].y,
+            loop: 0,
+            onComplete: function () {
+              tween.remove();
+              self.playerList[previousPlayer - 1].houseDeck.push(
+                self.houseCards[lowest_index]
+              );
+              self.houseCards[lowest_index].card.destroy();
+              self.dealer.houseCardsInPlay--;
+            },
+          });
+        }
+        if (self.playerTurn === self.playerNumber) {
+          //It is this client's turn
+          self.bidHud.setVisible(true);
+          self.betNumberValue = bidNumber + 1;
+          self.betNumber.setText(self.betNumberValue);
+          startTimer(15);
         }
       }
     );
@@ -365,36 +381,81 @@ export default class Game extends Phaser.Scene {
       self.currentBid = 0;
       self.betNumberValue = 1;
       self.betNumber.setText(self.betNumberValue);
-      if (self.houseCards[0].value > self.houseCards[1].value) {
-        self.playerList[secondPlacePlayer - 1].houseDeck.push(
-          self.houseCards[1]
-        );
-        self.playerList[winningPlayer - 1].houseDeck.push(self.houseCards[0]);
-      } else {
-        self.playerList[secondPlacePlayer - 1].houseDeck.push(
-          self.houseCards[0]
-        );
-        self.playerList[winningPlayer - 1].houseDeck.push(self.houseCards[1]);
+      let highValue = -1;
+      let highIndex, lowIndex;
+      //Get the highest value
+      for (let i = 0; i < self.activePlayers; i++) {
+        if (self.houseCards[i].value > highValue) {
+          highValue = self.houseCards[i].value;
+          highIndex = i;
+        }
       }
-      //Update these players' coin balances and remove the 2 images
-      self.playerList[secondPlacePlayer - 1].updateCoinBalance(false);
-      self.playerList[winningPlayer - 1].updateCoinBalance(true); //True because this player won
-      self.houseCards[0].card.destroy();
-      self.houseCards[1].card.destroy();
-      self.dealer.houseCardsInPlay -= 2;
-      self.houseCards.splice(0, 2); //Remove those 2 cards from the main deck
+      //Get the second highest value
+      let secondHighValue = -1;
+      for (let i = 0; i < self.activePlayers; i++) {
+        if (
+          self.houseCards[i].value > secondHighValue &&
+          self.houseCards[i].value < highValue
+        ) {
+          secondHighValue = self.houseCards[i].value;
+          lowIndex = i;
+        }
+      }
+      let tween = self.tweens.add({
+        targets: self.houseCards[highIndex].card,
+        duration: 500,
+        x: self.playerList[winningPlayer - 1].x,
+        y: self.playerList[winningPlayer - 1].y,
+        loop: 0,
+        onComplete: function () {
+          tween.remove();
+          self.houseCards[highIndex].card.destroy();
+          tween = self.tweens.add({
+            targets: self.houseCards[lowIndex].card,
+            duration: 500,
+            x: self.playerList[secondPlacePlayer - 1].x,
+            y: self.playerList[secondPlacePlayer - 1].y,
+            loop: 0,
+            onComplete: function () {
+              tween.remove();
+              self.houseCards[lowIndex].card.destroy();
+              //Add cards to correct players' decks
+              self.playerList[winningPlayer - 1].houseDeck.push(
+                self.houseCards[highIndex]
+              );
+              self.playerList[secondPlacePlayer - 1].houseDeck.push(
+                self.houseCards[lowIndex]
+              );
+              //Update these players' coin balances and remove the 2 images
+              self.playerList[secondPlacePlayer - 1].updateCoinBalance(false);
+              self.playerList[winningPlayer - 1].updateCoinBalance(true); //True because this player won
+              self.dealer.houseCardsInPlay -= 2;
+              self.houseCards.splice(0, self.activePlayers); //Removes cards from deck
 
-      //Reset player coloring and their bid number
-      self.playerList.forEach((player) => {
-        player.setActive(0);
-        player.setBidNumber("");
+              //Reset player coloring and their bid number
+              self.playerList.forEach((player) => {
+                player.setActive(0);
+                player.setBidNumber("");
+              });
+              if (self.houseCards.length > 0) {
+                //The deck is not empty, continue playing
+                self.socket.emit(
+                  "readyForNextHouseTurn",
+                  self.playerNumber,
+                  winningPlayer
+                );
+              } else if (self.houseCards.length === 0) {
+                self.socket.emit(
+                  "readyForNextHouseTurn",
+                  self.playerNumber,
+                  winningPlayer,
+                  true
+                ); //moneyphase
+              }
+            },
+          });
+        },
       });
-      if (self.houseCards.length > 0 && self.playerNumber === 1) {
-        //The deck is not empty, continue playing
-        self.socket.emit("dealCards", winningPlayer);
-      } else if (self.houseCards.length === 0 && self.playerNumber === 1) {
-        self.socket.emit("moneyPhase");
-      }
     });
     this.socket.on("moneyPhase", function () {
       // self.zone = new Zone(self);
@@ -402,12 +463,14 @@ export default class Game extends Phaser.Scene {
       // self.outline = self.zone.renderOutline(self.dropZone);
       self.bidHud.setVisible(false);
       self.playerList[self.playerNumber - 1].renderHand();
+      self.isMoneyPhase = true;
     });
     this.socket.on("nextMoneyTurn", function () {
       self.playerList[self.playerNumber - 1].setCardsInteractive(true);
       self.dealer.moneyCardsInPlay = 0;
       self.dealer.dealMoneyCards();
       self.playButton.setVisible(true);
+      startTimer(20);
     });
 
     this.socket.on("cardPlayed", function (cardValue, player) {
@@ -438,20 +501,63 @@ export default class Game extends Phaser.Scene {
         }
       });
       self.winText = self.add
-        .text(340, 300, [
+        .text(640, 325, [
           "Player " + self.playerList[winningPlayerIndex].playerName + " Wins!",
         ])
         .setFontSize(80)
         .setFontFamily("Trebuchet MS")
-        .setAlign("center");
+        .setOrigin(0.5);
       if (self.isPlayerA) {
         self.restartText.setVisible(true);
+        self.winningPlayerIndex = winningPlayerIndex;
       }
     });
 
     this.socket.on("restartGame", function () {
-      //TODO: reshuffle decks and reset all values for all players
+      self.winText.setVisible(false);
+      self.moneyText.setVisible(false);
+      self.playerList.forEach((player) => {
+        player.resetAllValues();
+      });
+      if (self.isPlayerA) {
+        generateDecks();
+        self.socket.emit("gameStart", self.houseCards, self.moneyCards);
+        self.socket.emit("dealCards", self.winningPlayerIndex + 1);
+      }
     });
+
+    function generateDecks() {
+      self.houseCards = [];
+      self.moneyCards = [];
+      for (let i = 0; i < 30; i++) {
+        let card = new HouseCard(self);
+        card.setValues(i + 1, "house" + (i + 1).toString());
+        self.houseCards.push(card);
+      }
+      self.houseCards.sort(() => Math.random() - 0.5);
+
+      let card = new MoneyCard(self);
+      card.setValues(0, "money1");
+      self.moneyCards.push(card);
+      let card0 = new MoneyCard(self);
+      card0.setValues(0, "money2");
+      self.moneyCards.push(card0);
+
+      for (let i = 2; i < 30; i++) {
+        let card = new MoneyCard(self);
+        card.setValues(1 + Math.floor(i / 2), "money" + (i + 1).toString());
+        self.moneyCards.push(card);
+      }
+      self.moneyCards.sort(() => Math.random() - 0.5);
+      //Remove cards based on player count
+      if (self.activePlayers === 3) {
+        self.houseCards.splice(0, 6);
+        self.moneyCards.splice(0, 6);
+      } else if (self.activePlayers === 4) {
+        self.houseCards.splice(0, 2);
+        self.moneyCards.splice(0, 2);
+      }
+    }
 
     function determineMoney() {
       for (let i = 0; i < self.activePlayers; i++) {
@@ -465,28 +571,96 @@ export default class Game extends Phaser.Scene {
         });
         let highestMoney = -1;
         let highestMoneyIndex = -1;
-        for (let j = 0; j < self.activePlayers - i; j++) {
-          if (self.moneyCards[j].value > highestMoney) {
+        for (let j = 0; j < self.activePlayers; j++) {
+          if (self.moneyCards[j].value >= highestMoney) {
             highestMoney = self.moneyCards[j].value;
             highestMoneyIndex = j;
           }
         }
-        self.playerList[highestPlayerIndex].moneyValue += highestMoney;
-        self.playerList[highestPlayerIndex].playedCardValue = 0;
-
-        console.log(self.moneyCards[highestMoneyIndex]);
-        self.moneyCards[highestMoneyIndex].card.destroy();
-        self.moneyCards.splice(highestMoneyIndex, 1);
-        self.playerList.forEach((player) => {
-          player.playedCard.destroy();
+        console.log(
+          self.playerList[highestPlayerIndex],
+          self.moneyCards[highestMoneyIndex].value
+        );
+        let tween = self.tweens.add({
+          targets: self.moneyCards[highestMoneyIndex].card,
+          x: self.playerList[highestPlayerIndex].x,
+          y: self.playerList[highestPlayerIndex].y,
+          duration: 500,
+          loop: 0,
+          onComplete: function () {
+            tween.remove();
+          },
         });
-        console.log(self.playerList[highestPlayerIndex].playerId, highestMoney);
-        self.playerList[highestPlayerIndex].playedCardValue = 0;
+        self.playerList[highestPlayerIndex].addMoney(highestMoney);
+        self.playerList[highestPlayerIndex].playedCardValue = -1;
+        self.moneyCards[highestMoneyIndex].value = -1;
       }
-      if (self.moneyCards.length === 0 && self.playerNumber === 1) {
-        self.socket.emit("endGame");
+
+      self.time.addEvent({
+        //Remove all the cards after they've been tweened
+        delay: 550,
+        callback: function () {
+          for (let i = 0; i < self.activePlayers; i++) {
+            self.moneyCards[i].card.destroy();
+          }
+          self.moneyCards.splice(0, self.activePlayers);
+          self.playerList.forEach((player) => {
+            player.playedCard.destroy();
+          });
+          if (self.moneyCards.length === 0 && self.playerNumber === 1) {
+            self.socket.emit("endGame");
+          }
+          self.socket.emit("readyForNextMoneyTurn", self.playerNumber); //This is needed because otherwise if it's controlled by one player then they can get desynced
+        },
+        callbackScope: this,
+        repeat: 0,
+      });
+    }
+
+    function startTimer(seconds) {
+      self.timer.setText(seconds).setVisible(true);
+
+      self.timerEvent = self.time.addEvent({
+        delay: 1000,
+        callback: decreaseTimer,
+        callbackScope: this,
+        repeat: seconds,
+      });
+    }
+
+    function decreaseTimer() {
+      if (self.timer.text === "0") {
+        if (!self.isMoneyPhase) {
+          //Automatically pass if the timer runs out
+          self.bidHud.setVisible(false);
+          self.timer.setVisible(false);
+          self.socket.emit("pass", self.playerNumber, self.currentBid);
+          self.timerEvent.remove();
+          self.timerEvent = null;
+        } else {
+          //Pick a random card and play it
+          let random = Math.floor(
+            Math.random() * self.playerHand.getChildren().length
+          );
+          self.selectedCard = self.playerHand.getChildren()[random];
+          //Simulate pressing the play button
+          self.playerList[self.playerNumber - 1].setCardsInteractive(false);
+          self.socket.emit(
+            "cardPlayed",
+            self.selectedCard.data.values.value,
+            self.playerNumber
+          );
+          self.playButton.setVisible(false);
+          self.selectedCard.destroy();
+          self.selectedCard = null;
+          //Remove timer
+          self.timer.setVisible(false);
+          self.timerEvent.remove();
+          self.timerEvent = null;
+        }
+      } else {
+        self.timer.setText(parseInt(self.timer.text) - 1);
       }
-      self.socket.emit("readyForNextTurn", self.playerNumber); //This is needed because otherwise if it's controlled by one player then they can get desynced
     }
 
     // this.input.on("pointerover", function (point, gameObject) {
