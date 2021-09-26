@@ -86,6 +86,32 @@ export default class Player {
 				scene.coinBalanceText.setText(this.coinBalance);
 			}
 		};
+		this.showDeckCard = () => {
+			//Shows a face down deck card that when hovered will display the cards this player has
+			scene.hoveredDeckCards = scene.add.group();
+			scene.deckCard = scene.add
+				.image(700, 700, "houseBack")
+				.setInteractive()
+				.setScale(0.2, 0.2)
+				.on("pointerover", () => {
+					scene.deckCard.setInteractive(false);
+					let startCoord =
+						737 - Math.floor((this.houseDeck.length * 75) / 2);
+					this.houseDeck.forEach((card, index) => {
+						let cardPreview = card.render(
+							startCoord + index * 75,
+							600,
+							0.1
+						);
+						scene.hoveredDeckCards.add(cardPreview);
+					});
+				})
+				.on("pointerout", function () {
+					scene.deckCard.setInteractive(true);
+					scene.hoveredDeckCards.setVisible(false);
+				});
+		};
+
 		this.renderHand = () => {
 			//Sort the house cards array
 			this.houseDeck.sort((a, b) => {

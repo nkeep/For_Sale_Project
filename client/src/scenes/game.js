@@ -78,6 +78,8 @@ export default class Game extends Phaser.Scene {
 
 		this.activePlayers = self.playerNames.length;
 		this.numRounds;
+		this.deckCard;
+		this.hoveredDeckCards;
 		this.currentRound = 1;
 		this.playerTurn = 0;
 		this.currentBid = 0;
@@ -401,6 +403,15 @@ export default class Game extends Phaser.Scene {
 							);
 							self.houseCards[lowest_index].card.destroy();
 							self.dealer.houseCardsInPlay--;
+							//Show the hoverable deck if this is the first card added
+							if (
+								self.currentRound === 1 &&
+								self.playerNumber === previousPlayer
+							) {
+								self.playerList[
+									self.playerNumber - 1
+								].showDeckCard();
+							}
 						},
 					});
 				}
@@ -411,9 +422,6 @@ export default class Game extends Phaser.Scene {
 					self.betNumber.setText(self.betNumberValue);
 					startTimer(15);
 				}
-				//Update round counter
-				self.currentRound += 1;
-				updateRoundCounter();
 			}
 		);
 
@@ -503,6 +511,16 @@ export default class Game extends Phaser.Scene {
 						});
 					},
 				});
+				if (
+					(self.playerNumber === winningPlayer ||
+						self.playerNumber === secondPlacePlayer) &&
+					self.currentRound === 1
+				) {
+					self.playerList[self.playerNumber - 1].showDeckCard();
+				}
+				//Update round counter
+				self.currentRound += 1;
+				updateRoundCounter();
 			}
 		);
 		this.socket.on("moneyPhase", function () {
@@ -511,6 +529,11 @@ export default class Game extends Phaser.Scene {
 			self.isMoneyPhase = true;
 			self.currentRound = 0;
 			updateRoundCounter();
+			//Remove the hoverable deck card
+			self.hoveredDeckCards.clear(true, true);
+			self.deckCard.destroy();
+			self.hoveredDeckCards = null;
+			self.deckCard = null;
 		});
 		this.socket.on("nextMoneyTurn", function () {
 			self.playerList[self.playerNumber - 1].setCardsInteractive(true);
