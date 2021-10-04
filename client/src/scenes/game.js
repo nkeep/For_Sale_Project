@@ -16,7 +16,7 @@ export default class Game extends Phaser.Scene {
 		this.playerNumber = data.playerNumber;
 	}
 	preload() {
-		this.load.baseURL = "https://natekeep.jumpingcrab.com/forsale-media/";
+		this.load.baseURL = "https://extras.natekeep.com/forsale-media/";
 		this.load.setCORS("anonymous");
 		this.load.crossOrigin = "anonymous";
 		for (let i = 0; i < 30; i++) {
