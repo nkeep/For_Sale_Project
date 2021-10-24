@@ -264,22 +264,24 @@ io.on("connection", function (socket) {
 		} catch {}
 		//Update the room with the correct players if in a room
 		if (self.roomId) {
-			let roomPlayers = [];
-			players[self.roomId].forEach((player) =>
-				roomPlayers.push(player["playerName"])
-			);
-			if (players[self.roomId].length !== 0) {
-				//Update the room for the other players if there are still players in the room
-				io.to(self.roomId).emit(
-					"playerJoined",
-					roomPlayers,
-					self.roomId
+			try {
+				let roomPlayers = [];
+				players[self.roomId].forEach((player) =>
+					roomPlayers.push(player["playerName"])
 				);
-			} else {
-				//Remove the room key from players if no players are in the room anymore
-				delete players[self.roomId];
-			}
-			console.log(players);
+				if (players[self.roomId].length !== 0) {
+					//Update the room for the other players if there are still players in the room
+					io.to(self.roomId).emit(
+						"playerJoined",
+						roomPlayers,
+						self.roomId
+					);
+				} else {
+					//Remove the room key from players if no players are in the room anymore
+					delete players[self.roomId];
+				}
+				console.log(players);
+			} catch {}
 		}
 	});
 });
