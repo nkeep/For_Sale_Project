@@ -426,25 +426,14 @@ export default class Game extends Phaser.Scene {
 				self.currentBid = 0;
 				self.betNumberValue = 1;
 				self.betNumber.setText(self.betNumberValue);
-				let highValue = -1;
 				let highIndex, lowIndex;
 				//Get the highest value
-				for (let i = 0; i < self.activePlayers; i++) {
-					if (self.houseCards[i].value > highValue) {
-						highValue = self.houseCards[i].value;
-						highIndex = i;
-					}
-				}
-				//Get the second highest value
-				let secondHighValue = -1;
-				for (let i = 0; i < self.activePlayers; i++) {
-					if (
-						self.houseCards[i].value > secondHighValue &&
-						self.houseCards[i].value < highValue
-					) {
-						secondHighValue = self.houseCards[i].value;
-						lowIndex = i;
-					}
+				if (self.houseCards[0].value > self.houseCards[1].value) {
+					highIndex = 0;
+					lowIndex = 1;
+				} else {
+					highIndex = 1;
+					lowIndex = 0;
 				}
 				if (self.game.hasFocus) {
 					let tween = self.tweens.add({
